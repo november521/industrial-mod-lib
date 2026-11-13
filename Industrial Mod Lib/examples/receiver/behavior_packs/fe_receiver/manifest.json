@@ -1,0 +1,47 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "FE Test Battery",
+    "description": "Industrial Mod Lib FE test",
+    "uuid": "c8bce38b-6392-46af-8895-ba36e5463102",
+    "version": [
+      0,
+      1,
+      2
+    ],
+    "min_engine_version": [
+      1,
+      19,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "f014b4e6-a71b-4dc4-a580-2e914f499e68",
+      "version": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "b127e51b-699b-45bd-b82b-8b1169c87502",
+      "version": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "uuid": "89f28a16-4846-4b2c-866a-2e4cf9e96216",
+      "version": [
+        0,
+        1,
+        2
+      ]
+    }
+  ]
+}

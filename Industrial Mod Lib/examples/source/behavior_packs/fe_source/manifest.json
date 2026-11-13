@@ -1,0 +1,47 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "FE Pulse Generator",
+    "description": "Industrial Mod Lib FE test",
+    "uuid": "911ea873-1430-4d60-8716-cc93ecdbbfad",
+    "version": [
+      0,
+      1,
+      2
+    ],
+    "min_engine_version": [
+      1,
+      19,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "d5f472de-0348-443b-a1da-9b620e744ce0",
+      "version": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "b127e51b-699b-45bd-b82b-8b1169c87502",
+      "version": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "uuid": "9dd93274-b68b-47e4-b9e5-762d1bb04757",
+      "version": [
+        0,
+        1,
+        2
+      ]
+    }
+  ]
+}

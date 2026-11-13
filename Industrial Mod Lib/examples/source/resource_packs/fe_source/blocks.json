@@ -1,0 +1,11 @@
+{
+  "format_version": [
+    1,
+    1,
+    0
+  ],
+  "iml_fe_source:generator": {
+    "textures": "iml_fe_source:generator",
+    "sound": "metal"
+  }
+}

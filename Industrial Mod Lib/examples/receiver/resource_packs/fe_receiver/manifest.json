@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "FE Test Battery Resources",
+    "description": "Industrial Mod Lib FE test",
+    "uuid": "89f28a16-4846-4b2c-866a-2e4cf9e96216",
+    "version": [
+      0,
+      1,
+      2
+    ],
+    "min_engine_version": [
+      1,
+      19,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "b385135f-fbf1-4919-adc8-a2d469e60e41",
+      "version": [
+        0,
+        1,
+        2
+      ]
+    }
+  ]
+}

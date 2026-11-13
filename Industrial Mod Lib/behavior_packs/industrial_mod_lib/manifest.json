@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "工业模组通用前置库",
+    "description": "Shared energy API for NetEase ModSDK",
+    "uuid": "b127e51b-699b-45bd-b82b-8b1169c87502",
+    "version": [0, 1, 0],
+    "min_engine_version": [1, 19, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "9f4cee65-56c3-450c-81c4-ac5f1fcd4516",
+      "version": [0, 1, 0]
+    }
+  ]
+}
