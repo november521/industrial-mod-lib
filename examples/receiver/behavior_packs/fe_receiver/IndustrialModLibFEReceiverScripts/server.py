@@ -3,8 +3,24 @@ import mod.server.extraServerApi as serverApi
 
 ServerSystem = serverApi.GetServerSystemCls()
 BATTERY = "iml_fe_receiver:battery"
+PARTIAL_ITEM_TEST = "iml_fe_receiver:partial_item_test"
 CAPACITY_FE = 1000
 LIMIT_FE = 200
+
+
+class PartialItemTestPort(object):
+    """Use the same battery slot with less room during actual insertion."""
+
+    def __init__(self, simulated_port, actual_port):
+        self._simulated_port = simulated_port
+        self._actual_port = actual_port
+
+    def get_stack(self, slot):
+        return self._actual_port.get_stack(slot)
+
+    def insert(self, slot, stack, simulate=False):
+        port = self._simulated_port if simulate else self._actual_port
+        return port.insert(slot, stack, simulate)
 
 
 class ReceiverSystem(ServerSystem):
@@ -30,6 +46,7 @@ class ReceiverSystem(ServerSystem):
         if fe is not None:
             fe.register_block(BATTERY, self.battery_port)
             fe.register_block_capability(BATTERY, "item", self.item_port)
+            fe.register_block_capability(BATTERY, PARTIAL_ITEM_TEST, self.partial_item_port)
             self._fe = fe
             print("[FE receiver] Battery ports registered")
 
@@ -47,8 +64,20 @@ class ReceiverSystem(ServerSystem):
     def item_port(self, dimension, position, face):
         if face not in ("up", "down"):
             return None
+        return self.create_item_port(dimension, position, face, 8)
+
+    def partial_item_port(self, dimension, position, face):
+        if face != "up":
+            return None
+        simulated = self.item_port(dimension, position, face)
+        actual = self.create_item_port(dimension, position, face, 4)
+        if simulated is None or actual is None:
+            return None
+        return PartialItemTestPort(simulated, actual)
+
+    def create_item_port(self, dimension, position, face, capacity):
         return self._fe.create_block_item_port(
-            dimension, position, "iml_fe_receiver:items", {0: 8},
+            dimension, position, "iml_fe_receiver:items", {0: capacity},
             lambda stack: 64, (0,) if face == "up" else (),
             (0,) if face == "down" else ())
 

@@ -20,8 +20,9 @@
 - `behavior_packs/industrial_mod_lib/` 已实现整数 FE、按面注册与查询、模拟和实际充放电，以及方块实体存储。现有入口为 `GetSystem("fe", "energy")`，限额按调用计算。
 - `examples/source/` 和 `examples/receiver/` 分别是发电机和电池。已确认三个独立行为包同时挂载，两个示例方块成功注册。工作台打包故障及复用步骤见 [MC Studio 测试说明](MCSTUDIO.md)。
 - 旧示例空手右键没有成功。0.1.2 示例改用聊天测试入口补充交互，已检查语法和 ZIP 结构。实际供电、0.1.2 聊天入口和存档恢复仍未实测。用户已明确本阶段结束 FE 验证，后续默认从下一模块继续。
-- 统一能力注册表和自定义物品端口已实现。用户已确认目录重构后的前置包通过 MC Studio 实机复验。跨包物品搬运、普通箱子和双箱适配、流体及批量示例待实现。
+- 统一能力注册表和自定义物品端口已实现。用户已确认发电机与电池的 0.1.3 跨包物品搬运实机验收通过。[验收步骤](../examples/README.md#跨组件物品搬运验收)
+- 用户已确认单箱和双箱通过 MC Studio 实机验收。双箱探针实测两半均返回 54 格，两个标记出现在两半的同一槽号 0 和 27。[双箱搬运验收步骤](../examples/README.md#原版双箱搬运验收)
 
 ## 给新对话的起点
 
-先读本文件、[项目规格](PROJECT_SPEC.md)和[MC Studio 测试说明](MCSTUDIO.md)。重构复验使用 [当前前置测试包](../mcstudio-test/current/IML-fe-structure-test.zip) 和 [接收端测试包](../mcstudio-test/current/IML-receiver-item-test.zip)。历史测试包在 `mcstudio-test/archive/`，同一个世界只挂载同 UUID 的一个版本。
+先读本文件、[项目规格](PROJECT_SPEC.md)和[MC Studio 测试说明](MCSTUDIO.md)。[验收目录](../mcstudio-test/acceptance)存放本轮需要导入的全部包，历史验收包在 `mcstudio-test/archive/`。同一个世界只挂载同 UUID 的一个版本。

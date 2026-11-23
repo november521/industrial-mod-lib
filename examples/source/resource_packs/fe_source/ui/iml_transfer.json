@@ -1,0 +1,217 @@
+{
+  "namespace": "iml_transfer",
+  "main": {
+    "type": "screen",
+    "is_showing_menu": true,
+    "render_game_behind": true,
+    "button_mappings": [
+      {
+        "from_button_id": "button.menu_inventory_cancel",
+        "to_button_id": "#iml_transfer_close",
+        "mapping_type": "global"
+      },
+      {
+        "from_button_id": "button.menu_cancel",
+        "to_button_id": "#iml_transfer_close",
+        "mapping_type": "global"
+      }
+    ],
+    "controls": [
+      {
+        "panel": {
+          "type": "panel",
+          "size": [
+            250,
+            148
+          ],
+          "controls": [
+            {
+              "background": {
+                "type": "image",
+                "texture": "textures/ui/iml_transfer/panel",
+                "size": [
+                  "100%",
+                  "100%"
+                ],
+                "layer": 0
+              }
+            },
+            {
+              "title": {
+                "type": "label",
+                "offset": [
+                  0,
+                  -58
+                ],
+                "text": "IML - Item Transfer Test",
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "result": {
+                "type": "label",
+                "offset": [
+                  0,
+                  3
+                ],
+                "size": [
+                  218,
+                  58
+                ],
+                "text": "Reading inventory...",
+                "text_alignment": "left",
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "seed@iml_transfer.action": {
+                "$label_text": "Seed 10",
+                "offset": [
+                  -76,
+                  -34
+                ],
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "refresh@iml_transfer.action": {
+                "$label_text": "Refresh",
+                "offset": [
+                  0,
+                  -34
+                ],
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "send@iml_transfer.action": {
+                "$label_text": "Send",
+                "offset": [
+                  76,
+                  -34
+                ],
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "partial@iml_transfer.action": {
+                "$label_text": "Partial test",
+                "offset": [
+                  -76,
+                  52
+                ],
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "preview@iml_transfer.action": {
+                "$label_text": "Preview",
+                "offset": [
+                  0,
+                  52
+                ],
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "pull@iml_transfer.action": {
+                "$label_text": "Pull",
+                "visible": false,
+                "offset": [
+                  76,
+                  -34
+                ],
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            },
+            {
+              "close@iml_transfer.action": {
+                "$label_text": "Close",
+                "offset": [
+                  76,
+                  52
+                ],
+                "layer": 2,
+                "anchor_from": "center",
+                "anchor_to": "center"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "action@common.button": {
+    "size": [
+      69,
+      20
+    ],
+    "$default_texture": "textures/ui/iml_transfer/default",
+    "$hover_texture": "textures/ui/iml_transfer/hover",
+    "$pressed_texture": "textures/ui/iml_transfer/pressed",
+    "default_control": "default",
+    "hover_control": "hover",
+    "pressed_control": "pressed",
+    "controls": [
+      {
+        "default": {
+          "type": "image",
+          "texture": "$default_texture",
+          "size": [
+            "100%",
+            "100%"
+          ]
+        }
+      },
+      {
+        "hover": {
+          "type": "image",
+          "texture": "$hover_texture",
+          "size": [
+            "100%",
+            "100%"
+          ]
+        }
+      },
+      {
+        "pressed": {
+          "type": "image",
+          "texture": "$pressed_texture",
+          "size": [
+            "100%",
+            "100%"
+          ]
+        }
+      },
+      {
+        "label": {
+          "type": "label",
+          "text": "$label_text",
+          "layer": 3,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text_alignment": "center"
+        }
+      }
+    ]
+  }
+}

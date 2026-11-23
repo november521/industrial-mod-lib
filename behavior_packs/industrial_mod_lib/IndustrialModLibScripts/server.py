@@ -3,6 +3,7 @@ import mod.server.extraServerApi as serverApi
 from IndustrialModLibScripts.capabilities.registry import CapabilityRegistry
 from IndustrialModLibScripts.energy import EnergyStorage
 from IndustrialModLibScripts.items import ItemPort
+from IndustrialModLibScripts.vanilla.chest import CHEST, open_chest
 
 
 ServerSystem = serverApi.GetServerSystemCls()
@@ -19,6 +20,11 @@ class EnergySystem(ServerSystem):
         level_id = serverApi.GetLevelId()
         self._block_info = factory.CreateBlockInfo(level_id)
         self._block_entities = factory.CreateBlockEntityData(level_id)
+        self._items = factory.CreateItem(level_id)
+        self.register_block_capability(CHEST, "item", self._chest_port)
+
+    def _chest_port(self, dimension, position, face):
+        return open_chest(self._block_info, self._items, dimension, position)
 
     def register_block(self, identifier, provider):
         """Register a callable taking (dimension, position, face)."""
