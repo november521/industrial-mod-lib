@@ -37,6 +37,10 @@
           ]
         }
       },
+      "netease:block_entity": {
+        "tick": false,
+        "movable": false
+      },
       "netease:tier": {
         "digger": "pickaxe"
       }

@@ -6,7 +6,7 @@
 
 ## 加载
 
-将 `behavior_packs/industrial_mod_lib` 作为行为包加入网易开发工作台的测试工程。使用 FE 的组件需要与 FE 一起加载。若消费者使用行为包清单声明依赖，可引用 FE 清单的头部 UUID `b127e51b-699b-45bd-b82b-8b1169c87502` 和版本 `[0, 1, 0]`。
+将 `behavior_packs/industrial_mod_lib` 作为行为包加入网易开发工作台的测试工程。使用 FE 的组件需要与 FE 一起加载。若消费者使用行为包清单声明依赖，可引用 FE 清单的头部 UUID `b127e51b-699b-45bd-b82b-8b1169c87502` 和版本 `[0, 1, 2]`。
 
 ## 注册一块电池
 
@@ -70,7 +70,11 @@ fe.register_block_capability("example:battery", "item", item_port)
 
 每轮操作前重新查询端口。当前实现会检查方块状态和方块实体是否可访问，
 同坐标换成同类型、同状态方块时无法通过状态对比识别，因此端口仅在当前调用中使用。
-用户已在 MC Studio 完成目录重构后的物品端口复验。对应的验收包位于 [mcstudio-test/current](mcstudio-test/current)。
+## 原版普通箱子
+
+通过 `get_block_capability` 查询 `minecraft:chest` 的物品能力。单箱提供 0 至 26 号槽，双箱提供 0 至 53 号槽。从不同面或双箱的不同半箱获取同一格时，槽位标识一致。适配器使用 ModSDK 的物品堆叠上限，保留物品自定义数据，并按照容器写入结果返回余量或抽出量。
+
+每轮搬运重新查询端口。箱子合并、拆分、区块卸载或被替换时，旧端口在检测到变化后会停止存取。单箱和双箱搬运已由项目维护者在 MC Studio 验收。[验收包](mcstudio-test/acceptance) · [操作步骤](examples/README.md#原版双箱搬运验收)
 
 本地验收命令（在本项目目录运行）：
 

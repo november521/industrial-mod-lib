@@ -4,6 +4,14 @@ import mod.server.extraServerApi as serverApi
 
 @Mod.Binding(name="IndustrialModLibFESource", version="0.1.0")
 class SourceDemo(object):
+    @Mod.InitClient()
+    def init_client(self):
+        import mod.client.extraClientApi as clientApi
+        clientApi.RegisterSystem(
+            "iml_fe_source", "client",
+            "IndustrialModLibFESourceScripts.client.TransferClient"
+        )
+
     @Mod.InitServer()
     def init_server(self):
         serverApi.RegisterSystem(

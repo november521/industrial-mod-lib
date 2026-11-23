@@ -22,6 +22,9 @@ class Engine:
     def CreateBlockEntityData(self, level):
         return self
 
+    def CreateItem(self, level):
+        return self
+
     def GetBlockNew(self, position, dimension):
         return self.block
 

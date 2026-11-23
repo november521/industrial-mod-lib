@@ -46,17 +46,14 @@ class ItemPort(object):
         stored = 0
         if current is not None:
             stored = current["count"]
-            identity = dict(current)
-            del identity["count"]
-            incoming = dict(stack)
-            del incoming["count"]
-            if identity != incoming:
+            if not self._same_item(current, stack):
                 return remainder
         accepted = min(stack["count"], max(0, min(limit, item_limit) - stored))
         if accepted and not simulate:
-            updated = deepcopy(stack)
+            updated = deepcopy(current if current is not None else stack)
             updated["count"] = stored + accepted
-            data[self._storage_prefix + str(slot)] = updated
+            if not self._write(data, slot, updated):
+                return remainder
         remainder["count"] -= accepted
         return remainder if remainder["count"] else None
 
@@ -77,9 +74,21 @@ class ItemPort(object):
         if not simulate:
             remaining = deepcopy(current)
             remaining["count"] -= extracted["count"]
-            data[self._storage_prefix + str(slot)] = (
-                remaining if remaining["count"] else {})
+            if not self._write(data, slot, remaining if remaining["count"] else None):
+                return None
         return extracted
+
+    @staticmethod
+    def _same_item(first, second):
+        first = dict(first)
+        second = dict(second)
+        del first["count"]
+        del second["count"]
+        return first == second
+
+    def _write(self, data, slot, stack):
+        data[self._storage_prefix + str(slot)] = stack or {}
+        return True
 
     def _read(self, data, slot):
         if data is not None:
