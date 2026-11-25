@@ -2,8 +2,11 @@ import mod.server.extraServerApi as serverApi
 
 from IndustrialModLibScripts.capabilities.registry import CapabilityRegistry
 from IndustrialModLibScripts.energy import EnergyStorage
+from IndustrialModLibScripts.fluids import FluidPort
 from IndustrialModLibScripts.items import ItemPort
-from IndustrialModLibScripts.vanilla.chest import CHEST, open_chest
+from IndustrialModLibScripts.vanilla.chest import CHEST_IDS, open_chest
+from IndustrialModLibScripts.vanilla.container import (
+    SINGLE_CONTAINERS, item_stack_limit, open_single_container)
 
 
 ServerSystem = serverApi.GetServerSystemCls()
@@ -21,10 +24,16 @@ class EnergySystem(ServerSystem):
         self._block_info = factory.CreateBlockInfo(level_id)
         self._block_entities = factory.CreateBlockEntityData(level_id)
         self._items = factory.CreateItem(level_id)
-        self.register_block_capability(CHEST, "item", self._chest_port)
+        for identifier in CHEST_IDS:
+            self.register_block_capability(identifier, "item", self._chest_port)
+        for identifier in SINGLE_CONTAINERS:
+            self.register_block_capability(identifier, "item", self._single_container_port)
 
     def _chest_port(self, dimension, position, face):
         return open_chest(self._block_info, self._items, dimension, position)
+
+    def _single_container_port(self, dimension, position, face):
+        return open_single_container(self._block_info, self._items, dimension, position)
 
     def register_block(self, identifier, provider):
         """Register a callable taking (dimension, position, face)."""
@@ -62,7 +71,7 @@ class EnergySystem(ServerSystem):
 
     def create_block_item_port(self, dimension, position, key, slot_limits,
                                item_limit, insert_slots, extract_slots):
-        """Build a face view over the current custom block entity."""
+        """Build a face view. A None item_limit uses the SDK's item stack limits."""
         position = tuple(position)
         state = self._block_info.GetBlockNew(position, dimension)
         if not state:
@@ -76,5 +85,31 @@ class EnergySystem(ServerSystem):
 
         if resolve_data() is None:
             return None
+        if item_limit is None:
+            item_limit = lambda stack: item_stack_limit(self._items, stack)
         return ItemPort(resolve_data, (dimension, position, key), slot_limits,
                         item_limit, insert_slots, extract_slots, key + ":")
+
+    def create_block_fluid_port(self, dimension, position, key, capacity,
+                                allowed_fluids=None, can_fill=True, can_drain=True):
+        """Build a face view over a tank stored in a loaded custom block entity."""
+        position = tuple(position)
+        state = self._block_info.GetBlockNew(position, dimension)
+        if not state:
+            return None
+        state = dict(state)
+
+        def resolve_data():
+            if not state:
+                return None
+            if self._block_info.GetBlockNew(position, dimension) != state:
+                state.clear()
+                return None
+            data = self._block_entities.GetBlockEntityData(dimension, position)
+            if data is None:
+                state.clear()
+            return data
+
+        if resolve_data() is None:
+            return None
+        return FluidPort(resolve_data, key, capacity, allowed_fluids, can_fill, can_drain)

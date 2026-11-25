@@ -29,7 +29,7 @@ class TransferClient(ClientSystem):
 
     def open_panel(self, args):
         if self.ready and self.panel is None:
-            clientApi.PushScreen(NAMESPACE, UI_KEY, {"battery": args.get("battery", False)})
+            clientApi.PushScreen(NAMESPACE, UI_KEY, {"mode": args.get("mode", "item_source")})
 
     def on_right_click(self, args):
         if not self.ready or self.panel is not None:
@@ -44,7 +44,8 @@ class TransferClient(ClientSystem):
             return
         position = (hit["x"], hit["y"], hit["z"])
         block = self.blocks.GetBlock(position)
-        if block and block[0] in ("iml_fe_source:generator", "iml_fe_receiver:battery"):
+        if block and block[0] in ("iml_fe_source:generator", "iml_fe_receiver:battery",
+                                  "iml_fe_receiver:tank", "iml_fe_receiver:item_conduit"):
             args["cancel"] = True
             self.NotifyToServer("TransferAction", {"action": "open", "position": list(position)})
 

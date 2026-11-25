@@ -6,6 +6,12 @@
   "texture_data": {
     "iml_fe_receiver:battery": {
       "textures": "textures/blocks/iron_block"
+    },
+    "iml_fe_receiver:tank": {
+      "textures": "textures/blocks/iml_fluid_tank"
+    },
+    "iml_fe_receiver:item_conduit": {
+      "textures": "textures/blocks/iml_item_conduit"
     }
   }
 }

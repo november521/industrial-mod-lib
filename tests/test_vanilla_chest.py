@@ -2,6 +2,8 @@ from copy import deepcopy
 import unittest
 
 from test_capabilities import EnergySystem
+from IndustrialModLibScripts.vanilla.chest import CHEST_IDS
+from IndustrialModLibScripts.vanilla.container import BARREL, SHULKER_BOXES
 
 
 POSITION = (1, 64, 3)
@@ -19,19 +21,21 @@ class NativeChest:
         self.writes = []
         self.reject_writes = False
         self.other_loaded = False
+        self.other_block = None
+        self.reciprocal_pair = True
 
     def GetBlockNew(self, position, dimension):
         if (position, dimension) == (POSITION, DIMENSION):
             return self.block
         if (position, dimension) == (OTHER, DIMENSION) and self.other_loaded:
-            return self.block
+            return self.other_block if self.other_block is not None else self.block
 
     def GetContainerSize(self, position, dimension):
         return self.size
 
     def GetChestPairedPosition(self, position, dimension):
         if position == OTHER:
-            return POSITION if self.pair == OTHER else None
+            return POSITION if self.pair == OTHER and self.reciprocal_pair else None
         return self.pair
 
     def GetItemBasicInfo(self, name, aux):
@@ -141,3 +145,80 @@ class ChestCapabilityTests(unittest.TestCase):
         self.chest.size = 27
         self.assertEqual(self.port().get_slots(), tuple(range(27)))
         self.assertIsNone(first.extract(27, 1))
+
+    def test_each_chest_variant_supports_single_and_double_slot_access(self):
+        self.assertEqual(set(CHEST_IDS), {
+            "minecraft:chest", "minecraft:trapped_chest",
+            "minecraft:copper_chest", "minecraft:exposed_copper_chest",
+            "minecraft:weathered_copper_chest", "minecraft:oxidized_copper_chest",
+            "minecraft:waxed_copper_chest", "minecraft:waxed_exposed_copper_chest",
+            "minecraft:waxed_weathered_copper_chest", "minecraft:waxed_oxidized_copper_chest",
+        })
+        for identifier in CHEST_IDS:
+            with self.subTest(identifier=identifier):
+                self.chest.block = {"name": identifier}
+                self.chest.size = 27
+                self.chest.pair = None
+                single = self.port()
+                self.assertEqual(single.get_slots(), tuple(range(27)))
+                self.assertIsNone(single.insert(26, APPLES))
+                self.assertEqual(single.extract(26, 10), APPLES)
+
+                self.chest.other_loaded = True
+                self.chest.size = 54
+                self.chest.pair = OTHER
+                first = self.port()
+                second = self.library.get_block_capability(DIMENSION, OTHER, "up", "item")
+                self.assertEqual(first.get_slots(), tuple(range(54)))
+                self.assertEqual(first.get_slot_key(53), second.get_slot_key(53))
+                self.assertIsNone(second.insert(53, APPLES))
+                self.assertEqual(first.extract(53, 10), APPLES)
+                self.assertIsNone(second.get_stack(53))
+
+    def test_copper_pair_requires_supported_halves_and_matching_links(self):
+        self.chest.block = {"name": "minecraft:copper_chest"}
+        self.chest.other_loaded = True
+        self.chest.size = 54
+        self.chest.pair = OTHER
+        self.chest.reciprocal_pair = False
+        self.assertIsNone(self.port())
+        self.chest.reciprocal_pair = True
+        self.chest.other_block = {"name": "minecraft:ender_chest"}
+        self.assertIsNone(self.port())
+        self.assertIsNone(self.library.get_block_capability(DIMENSION, OTHER, "up", "item"))
+        self.assertEqual(self.chest.writes, [])
+
+    def test_copper_variant_change_invalidates_cached_port_and_preserves_stock(self):
+        self.chest.block = {"name": "minecraft:weathered_copper_chest"}
+        self.chest.other_loaded = True
+        self.chest.size = 54
+        self.chest.pair = OTHER
+        old = self.port()
+        self.assertIsNone(old.insert(27, APPLES))
+
+        self.chest.other_block = {"name": "minecraft:waxed_weathered_copper_chest"}
+        self.assertIsNone(old.extract(27, 1))
+        new = self.port()
+        other = self.library.get_block_capability(DIMENSION, OTHER, "up", "item")
+        self.assertEqual(new.get_slot_key(27), old.get_slot_key(27))
+        self.assertEqual(other.get_slot_key(27), new.get_slot_key(27))
+        self.assertEqual(other.extract(27, 4), dict(APPLES, count=4))
+        self.assertEqual(new.get_stack(27), dict(APPLES, count=6))
+
+    def test_barrel_and_all_shulker_ids_use_single_container_slots(self):
+        for identifier in (BARREL,) + SHULKER_BOXES:
+            with self.subTest(identifier=identifier):
+                self.chest.block = {"name": identifier}
+                top, side = self.port(), self.port("west")
+                self.assertEqual(top.get_slots(), tuple(range(27)))
+                self.assertEqual(top.get_slot_key(26), side.get_slot_key(26))
+                self.assertIsNone(top.insert(26, APPLES))
+                self.assertEqual(side.extract(26, 10), APPLES)
+
+    def test_single_container_port_invalidates_on_block_replacement(self):
+        self.chest.block = {"name": BARREL}
+        barrel = self.port()
+        self.chest.block = {"name": "minecraft:white_shulker_box"}
+        self.assertEqual(barrel.insert(0, APPLES), APPLES)
+        self.assertEqual(self.chest.writes, [])
+        self.assertIsNone(self.port().insert(0, APPLES))

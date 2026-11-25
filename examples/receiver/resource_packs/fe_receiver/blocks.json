@@ -7,5 +7,13 @@
   "iml_fe_receiver:battery": {
     "textures": "iml_fe_receiver:battery",
     "sound": "metal"
+  },
+  "iml_fe_receiver:tank": {
+    "textures": "iml_fe_receiver:tank",
+    "sound": "metal"
+  },
+  "iml_fe_receiver:item_conduit": {
+    "textures": "iml_fe_receiver:item_conduit",
+    "sound": "metal"
   }
 }

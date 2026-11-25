@@ -1,1 +1,3 @@
 tile.iml_fe_receiver:battery.name=FE Test Battery
+tile.iml_fe_receiver:tank.name=Fluid Tank
+tile.iml_fe_receiver:item_conduit.name=Item Conduit

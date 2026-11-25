@@ -10,7 +10,7 @@ ViewBinder = clientApi.GetViewBinderCls()
 class TransferScreen(ScreenNode):
     def __init__(self, namespace, name, params):
         ScreenNode.__init__(self, namespace, name, params)
-        self.battery = (params or {}).get("battery", False)
+        self.mode = (params or {}).get("mode", "item_source")
 
     def Create(self):
         self.client = clientApi.GetSystem(NAMESPACE, "client")
@@ -23,10 +23,25 @@ class TransferScreen(ScreenNode):
             button = self.GetBaseUIControl("/panel/" + name).asButton()
             button.AddTouchEventParams({"isSwallow": True})
             button.SetButtonTouchUpCallback(callback)
-        self.GetBaseUIControl("/panel/pull").SetVisible(self.battery)
-        if self.battery:
-            self.GetBaseUIControl("/panel/title").asLabel().SetText("Battery Inventory")
+        self.GetBaseUIControl("/panel/pull").SetVisible(self.mode == "battery")
+        title = self.GetBaseUIControl("/panel/title").asLabel()
+        if self.mode == "battery":
+            title.SetText("Battery Inventory")
             for name in ("seed", "send", "partial"):
+                self.GetBaseUIControl("/panel/" + name).SetVisible(False)
+        elif self.mode == "fluid_source":
+            title.SetText("Generator Fluids")
+            self.GetBaseUIControl("/panel/seed/label").asLabel().SetText("Load Water")
+            self.GetBaseUIControl("/panel/partial/label").asLabel().SetText("Load Lava")
+        elif self.mode in ("batch", "gather"):
+            title.SetText("Item Gathering" if self.mode == "gather" else "Batch Item Transfer")
+            self.GetBaseUIControl("/panel/send/label").asLabel().SetText("Run Round")
+            self.GetBaseUIControl("/panel/partial").SetVisible(False)
+            self.GetBaseUIControl("/panel/seed").SetVisible(self.mode == "batch")
+        elif self.mode == "tank":
+            title.SetText("Fluid Tank")
+            self.GetBaseUIControl("/panel/send/label").asLabel().SetText("Send Down")
+            for name in ("seed", "partial"):
                 self.GetBaseUIControl("/panel/" + name).SetVisible(False)
         self.refresh(None)
 

@@ -3,9 +3,12 @@ import mod.server.extraServerApi as serverApi
 
 ServerSystem = serverApi.GetServerSystemCls()
 BATTERY = "iml_fe_receiver:battery"
+TANK = "iml_fe_receiver:tank"
 PARTIAL_ITEM_TEST = "iml_fe_receiver:partial_item_test"
 CAPACITY_FE = 1000
 LIMIT_FE = 200
+TANK_CAPACITY = 1000
+TANK_FLUIDS = ("minecraft:water", "minecraft:lava")
 
 
 class PartialItemTestPort(object):
@@ -14,6 +17,9 @@ class PartialItemTestPort(object):
     def __init__(self, simulated_port, actual_port):
         self._simulated_port = simulated_port
         self._actual_port = actual_port
+
+    def get_slots(self):
+        return self._actual_port.get_slots()
 
     def get_stack(self, slot):
         return self._actual_port.get_stack(slot)
@@ -47,8 +53,18 @@ class ReceiverSystem(ServerSystem):
             fe.register_block(BATTERY, self.battery_port)
             fe.register_block_capability(BATTERY, "item", self.item_port)
             fe.register_block_capability(BATTERY, PARTIAL_ITEM_TEST, self.partial_item_port)
+            fe.register_block_capability(TANK, "fluid", self.tank_port)
             self._fe = fe
             print("[FE receiver] Battery ports registered")
+            print("[IML receiver] Tank port registered")
+
+    def tank_port(self, dimension, position, face):
+        if face not in ("up", "down"):
+            return None
+        return self._fe.create_block_fluid_port(
+            dimension, position, "iml_fe_receiver:fluid", TANK_CAPACITY,
+            allowed_fluids=TANK_FLUIDS, can_fill=face == "up",
+            can_drain=face == "down")
 
     def battery_port(self, dimension, position, face):
         if face == "up":
@@ -78,7 +94,7 @@ class ReceiverSystem(ServerSystem):
     def create_item_port(self, dimension, position, face, capacity):
         return self._fe.create_block_item_port(
             dimension, position, "iml_fe_receiver:items", {0: capacity},
-            lambda stack: 64, (0,) if face == "up" else (),
+            None, (0,) if face == "up" else (),
             (0,) if face == "down" else ())
 
     def on_chat(self, args):
