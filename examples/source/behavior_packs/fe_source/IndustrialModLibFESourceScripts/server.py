@@ -1,5 +1,8 @@
 import mod.server.extraServerApi as serverApi
+from IndustrialModLibFESourceScripts.batch_demo import CONDUIT, run_batch_demo, run_gather_demo
 from IndustrialModLibFESourceScripts.chest_probe import describe_chest
+from IndustrialModLibFESourceScripts.fluid_demo import (
+    FLUIDS, GENERATOR_CAPACITY, STORAGE_KEY, TANK, run_fluid_demo)
 from IndustrialModLibFESourceScripts.transport import move_one_slot, plan_one_slot
 
 
@@ -7,10 +10,13 @@ ServerSystem = serverApi.GetServerSystemCls()
 PULSE_FE = 200
 GENERATOR = "iml_fe_source:generator"
 BATTERY = "iml_fe_receiver:battery"
-CHEST = "minecraft:chest"
 PARTIAL_ITEM_TEST = "iml_fe_receiver:partial_item_test"
 ITEM_KEY = "iml_fe_source:items"
 SAMPLE_ID = "iml:transfer_sample"
+SAMPLE_STACK = {
+    "newItemName": "minecraft:apple", "count": 10,
+    "extraId": SAMPLE_ID, "customTips": "IML Transfer Sample",
+}
 
 
 class SourceSystem(ServerSystem):
@@ -38,6 +44,7 @@ class SourceSystem(ServerSystem):
         fe = serverApi.GetSystem("fe", "energy")
         if fe is not None:
             fe.register_block_capability(GENERATOR, "item", self.item_port)
+            fe.register_block_capability(GENERATOR, "fluid", self.fluid_port)
             self._fe = fe
 
     def item_port(self, dimension, position, face):
@@ -51,19 +58,23 @@ class SourceSystem(ServerSystem):
             dimension, position, ITEM_KEY, {0: 16, 1: 16},
             lambda stack: 64, (0, 1), ())
 
+    def fluid_port(self, dimension, position, face):
+        if face != "down":
+            return None
+        return self._fe.create_block_fluid_port(
+            dimension, position, STORAGE_KEY, GENERATOR_CAPACITY,
+            allowed_fluids=FLUIDS, can_fill=False)
+
     def transfer_target(self, dimension, position, capability):
         x, y, z = position
         below = (x, y - 1, z)
         port = self._fe.get_block_capability(dimension, below, "up", capability)
-        block = self._blocks.GetBlockNew(below, dimension)
-        name = block.get("name") if block else None
         if port is None and capability == "item":
-            # Keep the chest lid clear for verification through the vanilla UI.
-            east = (x + 1, y, z)
-            block = self._blocks.GetBlockNew(east, dimension)
-            if block and block["name"] == CHEST:
-                return "Chest", self._fe.get_block_capability(dimension, east, "west", capability)
-        return {CHEST: "Chest", BATTERY: "Battery"}.get(name, "Target"), port
+            # A side route leaves a vanilla container's lid clear.
+            east = self._fe.get_block_capability(dimension, (x + 1, y, z), "west", capability)
+            return "Target", east
+        block = self._blocks.GetBlockNew(below, dimension)
+        return ("Battery" if block and block.get("name") == BATTERY else "Target"), port
 
     def test_stock(self, player, parts, report=None):
         report = self.report if report is None else report
@@ -71,7 +82,7 @@ class SourceSystem(ServerSystem):
             if len(parts) != 4 and not (len(parts) == 5 and parts[0] in ("preview", "send")):
                 raise ValueError()
             position = tuple(map(int, parts[1:4]))
-            target_slot = int(parts[4]) if len(parts) == 5 else 0
+            target_slot = int(parts[4]) if len(parts) == 5 else None
         except ValueError:
             report(player, "Usage: imlmove seed|source|preview|send|partial X Y Z [slot]")
             return
@@ -96,10 +107,13 @@ class SourceSystem(ServerSystem):
             target_label, target = self.transfer_target(dimension, position, capability)
             if target is None:
                 message = ("Place the matching test battery below the generator."
-                           if parts[0] == "partial" else "No input below or chest to the east.")
+                           if parts[0] == "partial" else "No item input below or to the east.")
                 report(player, message)
                 return
-            if len(parts) == 5 and target_slot not in target.get_slots():
+            slots = target.get_slots()
+            if target_slot is None and slots:
+                target_slot = slots[0]
+            if target_slot not in slots:
                 report(player, "Target slot unavailable.")
                 return
             if parts[0] == "preview":
@@ -114,7 +128,8 @@ class SourceSystem(ServerSystem):
                                                     target_slot=target_slot)
             if report == self.report_panel:
                 report(player, "Planned: %d / Moved: %d\nGenerator: %s\n%s: %s\nRecovery: %s"
-                       % (planned, moved, self.describe_port(source), target_label, self.describe_port(target),
+                       % (planned, moved, self.describe_port(source), target_label,
+                          self.describe_port(target, target_slot),
                           self.describe_port(storage, 1)))
                 return
             report(player, "[IML move] Planned %d / Sent %d | source: %r | target: %r | buffered: %r"
@@ -124,8 +139,7 @@ class SourceSystem(ServerSystem):
             if source.get_stack(0) is not None:
                 report(player, "[IML source] Seed requires an empty generator")
                 return
-            storage.insert(0, {"newItemName": "minecraft:apple", "count": 10,
-                               "extraId": SAMPLE_ID, "customTips": "IML Transfer Sample"})
+            storage.insert(0, SAMPLE_STACK)
         before = source.get_stack(0)
         simulated = source.extract(0, 10, True)
         if report != self.report:
@@ -154,12 +168,12 @@ class SourceSystem(ServerSystem):
                 if len(parts) not in (5, 6):
                     raise ValueError()
                 position = tuple(map(int, parts[2:5]))
-                slot = int(parts[5]) if len(parts) == 6 else 0
+                slot = int(parts[5]) if len(parts) == 6 else None
             except ValueError:
                 self.report(player, "Usage: imlmove pull X Y Z [slot]")
                 return
             dim = self._factory.CreateDimension(player).GetPlayerDimensionId()
-            self.pull_from_chest(player, dim, position, False, slot, self.report)
+            self.pull_items(player, dim, position, False, slot, self.report)
             return
         if parts[:1] == ["imlchestprobe"]:
             args["cancel"] = True
@@ -173,7 +187,8 @@ class SourceSystem(ServerSystem):
                 return
             dimension = self._factory.CreateDimension(player).GetPlayerDimensionId()
             items = self._factory.CreateItem(serverApi.GetLevelId())
-            for line in describe_chest(self._blocks, items, dimension, position):
+            lookup = self._fe.get_block_capability if self._fe is not None else None
+            for line in describe_chest(self._blocks, items, dimension, position, lookup):
                 print("[IML chest probe] " + line)
             self.report(player, "Chest probe complete. See the server log.")
             return
@@ -210,12 +225,19 @@ class SourceSystem(ServerSystem):
     def open_panel(self, player, position):
         dimension = self._factory.CreateDimension(player).GetPlayerDimensionId()
         block = self._blocks.GetBlockNew(position, dimension)
-        if not block or block["name"] not in (GENERATOR, BATTERY):
-            self.report(player, "Select a generator or battery.")
+        modes = {GENERATOR: "item_source", BATTERY: "battery", TANK: "tank", CONDUIT: "gather"}
+        if not block or block["name"] not in modes:
+            self.report(player, "Select a generator, battery, fluid tank, or Item Conduit.")
             return
-        battery = block["name"] == BATTERY
-        self._panel_targets[player] = (dimension, position, battery)
-        self.NotifyToClient(player, "OpenTransferPanel", {"battery": battery})
+        name = block["name"]
+        mode = modes[name]
+        if name == GENERATOR:
+            x, y, z = position
+            below = self._blocks.GetBlockNew((x, y - 1, z), dimension)
+            if below:
+                mode = {TANK: "fluid_source", CONDUIT: "batch"}.get(below["name"], mode)
+        self._panel_targets[player] = (dimension, position, name, mode)
+        self.NotifyToClient(player, "OpenTransferPanel", {"mode": mode})
 
     def on_transfer_action(self, args):
         player = args.get("__id__")
@@ -232,11 +254,32 @@ class SourceSystem(ServerSystem):
         selected = self._panel_targets.get(player)
         if selected is None or action not in ("seed", "source", "send", "partial", "preview", "pull"):
             return
-        dimension, position, battery = selected
+        dimension, position, name, mode = selected
         if dimension != self._factory.CreateDimension(player).GetPlayerDimensionId():
             self.report_panel(player, "Reopen the panel in this dimension.")
             return
-        if battery:
+        if mode in ("fluid_source", "tank", "batch", "gather"):
+            if self._fe is None:
+                self.report_panel(player, "Library unavailable.")
+                return
+            block = self._blocks.GetBlockNew(position, dimension)
+            if not block or block["name"] != name:
+                self.report_panel(player, "Device unavailable.")
+                return
+            if mode == "gather":
+                if action in ("source", "preview", "send"):
+                    self.report_panel(player, run_gather_demo(
+                        self._fe, self._blocks, dimension, position, action))
+            elif mode == "batch":
+                if action in ("seed", "source", "preview", "send"):
+                    storage = self.storage_port(dimension, position)
+                    self.report_panel(player, run_batch_demo(
+                        self._fe, self._blocks, dimension, position, storage, SAMPLE_STACK, action))
+            elif action != "pull":
+                self.report_panel(player, run_fluid_demo(
+                    self._fe, dimension, position, mode == "tank", action))
+            return
+        if mode == "battery":
             if action == "source":
                 target = self.battery_port_at(dimension, position)
                 storage = self.storage_port(dimension, position) if target is not None else None
@@ -245,28 +288,27 @@ class SourceSystem(ServerSystem):
                     message += "\nRecovery: " + self.describe_port(storage, 1)
                 self.report_panel(player, message)
             elif action in ("preview", "pull"):
-                self.pull_from_chest(player, dimension, position, action == "preview")
+                self.pull_items(player, dimension, position, action == "preview")
             return
         if action != "pull":
             self.test_stock(player, (action,) + position, self.report_panel)
 
-    def pull_from_chest(self, player, dimension, position, simulate, slot=0, report=None):
+    def pull_items(self, player, dimension, position, simulate, slot=None, report=None):
         report = self.report_panel if report is None else report
         target = self.battery_port_at(dimension, position)
         if target is None:
             report(player, "Battery input unavailable.")
             return
         x, y, z = position
-        above = (x, y + 1, z)
-        block = self._blocks.GetBlockNew(above, dimension)
-        source = None
-        if block and block["name"] == CHEST:
-            source = self._fe.get_block_capability(dimension, above, "down", "item")
+        source = self._fe.get_block_capability(dimension, (x, y + 1, z), "down", "item")
         if source is None:
-            report(player, "Place a chest above the battery.")
+            report(player, "Connect an item output above the battery.")
             return
-        if slot not in source.get_slots():
-            report(player, "Chest slot unavailable.")
+        slots = source.get_slots()
+        if slot is None and slots:
+            slot = slots[0]
+        if slot not in slots:
+            report(player, "Source slot unavailable.")
             return
         if simulate:
             summary = "Preview: %d item(s)" % plan_one_slot(source, target, source_slot=slot)
@@ -278,7 +320,7 @@ class SourceSystem(ServerSystem):
             planned, moved = self.move_with_recovery(source, target, source, storage, source_slot=slot)
             summary = "Planned: %d / Moved: %d" % (planned, moved)
             summary += "\nRecovery: " + self.describe_port(storage, 1)
-        report(player, "%s\nChest: %s\nBattery: %s"
+        report(player, "%s\nSource: %s\nBattery: %s"
                % (summary, self.describe_port(source, slot), self.describe_port(target)))
 
     def battery_port_at(self, dimension, position):
@@ -288,9 +330,14 @@ class SourceSystem(ServerSystem):
         return None
 
     @staticmethod
-    def describe_port(port, slot=0):
+    def describe_port(port, slot=None):
         if port is None:
             return "Unavailable"
+        if slot is None:
+            slots = port.get_slots()
+            if not slots:
+                return "Unavailable"
+            slot = slots[0]
         stack = port.get_stack(slot)
         if not stack:
             return "Empty"
