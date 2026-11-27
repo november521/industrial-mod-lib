@@ -1,110 +1,17 @@
 # 工业模组通用前置库
 
-本库面向《我的世界》网易基岩版 ModSDK。不同玩法组件可以通过同一个服务端系统注册和查询机器的能量和物品端口。
+Industrial Mod Lib（IML）是面向网易《我的世界》基岩版 ModSDK 的服务端前置库。不同玩法组件可以通过相同的接口注册和查询方块的 **FE、物品和流体**端口，并按方块面模拟或执行存取。
 
-跨组件供电及存档恢复的测试步骤见 [FE 开发示例](examples/README.md)。
+## 安装与接入
 
-## 加载
+前置行为包位于 `behavior_packs/industrial_mod_lib`。当前验收包为 **0.1.5**，服务端入口为 `GetSystem("fe", "energy")`，接口版本为 `api_version = 1`。
 
-将 `behavior_packs/industrial_mod_lib` 作为行为包加入网易开发工作台的测试工程。使用 FE 的组件需要与 FE 一起加载。若消费者使用行为包清单声明依赖，可引用 FE 清单的头部 UUID `b127e51b-699b-45bd-b82b-8b1169c87502` 和版本 `[0, 1, 3]`。
+- [第三方接入指南](docs/API.md)包含依赖清单、注册时机、版本检查以及三类端口的代码示例。
+- [示例与游戏内操作](examples/README.md)包含独立的发电机示例及电池、储罐和导管示例。三个可导入的 ZIP 在[验收目录](mcstudio-test/acceptance)。
+- [验收记录](docs/TESTING.md)列出已通过和待实测项目。[交接记录](docs/HANDOFF.md)说明本阶段成果及后续范围。
 
-## 注册一块电池
+## 内置原版容器
 
-以下代码放在消费者组件的服务端脚本里。在 FE 的服务端系统注册完成后执行一次。示例方块 `example:battery` 需要在自己的行为包中定义，并配置 `netease:block_entity`。
+普通箱、陷阱箱和 8 种铜箱共享同一个物品端口提供器。双箱在引擎确认配对后共享槽位标识。木桶和各色潜影盒也使用同一物品接口，潜影盒端口遵循原版的嵌套限制。末影箱保留原版玩家交互。
 
-```python
-import mod.server.extraServerApi as serverApi
-
-fe = serverApi.GetSystem("fe", "energy")
-
-
-def battery_port(dimension, position, face):
-    if face == "up":
-        return fe.create_block_storage(dimension, position, 10000, 200, 0)
-    if face == "down":
-        return fe.create_block_storage(dimension, position, 10000, 0, 200)
-    return None
-
-
-fe.register_block("example:battery", battery_port)
-```
-
-另一组件可以调用 `fe.get_block_energy(dimension, position, "up")` 来查找电池顶部端口。没有可用端口时返回 `None`。方块面使用 `down`、`up`、`north`、`south`、`west`、`east`，相对于被查询的方块。端口按需查询，调用方应在同一段服务端逻辑内用完，避免在区块卸载或方块替换后继续持有。
-
-## 端口接口
-
-- `receive_energy(amount, simulate=False)` 和 `extract_energy(amount, simulate=False)` 返回实际可充入或取出的整数 FE。传入 `simulate=True` 时只计算结果。
-- `get_energy_stored()`、`get_max_energy_stored()`、`can_receive()`、`can_extract()` 用于查询端口。最后两个方法表示端口是否允许对应操作，具体能传多少由储量和容量决定。
-- `create_block_storage(...)` 将能量写入方块实体。同一方块上使用相同数据键的不同面共享储量。方块实体不可用时返回 `None`。`create_storage(...)` 也可以使用调用方提供的字典式存储，省略数据参数时使用内存。
-
-输入和输出上限按每次调用计算。末影接口的导管负责按游戏刻分配传输额度和调度网络。模拟操作不会预留电量。
-
-## 自定义设备物品端口（开发中）
-
-同一个 `fe` 系统提供 `register_block_capability(block_id, "item", provider)` 和
-`get_block_capability(dimension, position, face, "item")`。提供器接收维度、坐标和方块面，
-可调用 `create_block_item_port` 创建方块实体库存的视图：
-
-```python
-def item_port(dimension, position, face):
-    if face not in ("up", "down"):
-        return None
-    return fe.create_block_item_port(
-        dimension, position, "example:inventory", {0: 16},
-        item_stack_limit, (0,) if face == "up" else (),
-        (0,) if face == "down" else ())
-
-
-fe.register_block_capability("example:battery", "item", item_port)
-```
-
-`item_stack_limit(stack)` 由设备提供，应返回该物品的堆叠上限。传入 `None` 可使用 IML 从 ModSDK 查询的原版物品上限。示例的顶面可插入，
-底面可抽取。两面使用同一存储键和槽号，共享槽位及 `get_slot_key(slot)` 返回值。
-物品堆是含整数 `count` 的字典，其他字段完整保留。当前按除 `count` 外的全部字段
-比较是否可合堆，持久化数据应使用方块实体支持的值类型。
-
-- `get_slots()` 返回该面可见的槽号，`get_slot_limit(slot)` 返回配置的槽位上限。
-- `get_stack(slot)` 返回物品堆副本，空槽返回 `None`。
-- `insert(slot, stack, simulate=False)` 返回余量，全部接收时返回 `None`。
-- `extract(slot, count, simulate=False)` 返回取出的物品堆，无法取出时返回 `None`。
-
-每轮操作前重新查询端口。当前实现会检查方块状态和方块实体是否可访问，
-同坐标换成同类型、同状态方块时无法通过状态对比识别，因此端口仅在当前调用中使用。
-
-## 原版容器
-
-通过 `get_block_capability` 查询普通箱、陷阱箱和 8 种铜箱的物品能力。这些方块共享同一个提供器。单箱提供 0 至 26 号槽。双箱在引擎确认两半配对并均返回 54 槽时提供 0 至 53 号槽，两半访问同一格得到相同的槽位标识。适配器使用 ModSDK 的物品堆叠上限，保留物品自定义数据，并按照容器写入结果返回余量或抽出量。
-
-每轮搬运重新查询端口。箱子合并、拆分、区块卸载、被替换或铜箱变种变化时，旧端口在检测到变化后会停止存取。普通单箱和双箱已通过 MC Studio 验收，陷阱箱与铜箱已通过本地测试。[验收包](mcstudio-test/acceptance) · [箱子变种验收步骤](examples/README.md#陷阱箱与铜箱验收)
-
-木桶和各色潜影盒也通过同一个物品能力查询。潜影盒端口拒绝插入潜影盒物品，搬运潜影盒物品时按单件处理。[木桶与潜影盒验收步骤](examples/README.md#木桶与潜影盒验收)
-
-## 流体端口
-
-用 `register_block_capability` 注册 `"fluid"` 提供器，再按维度、方块坐标和方块面查询。示例用同一个方块实体键在顶面开放注入，在底面开放抽取。
-
-```python
-def fluid_port(dimension, position, face):
-    if face not in ("up", "down"):
-        return None
-    return fe.create_block_fluid_port(
-        dimension, position, "example:tank", 1000,
-        allowed_fluids=("minecraft:water", "minecraft:lava"),
-        can_fill=face == "up", can_drain=face == "down")
-
-fe.register_block_capability("example:tank", "fluid", fluid_port)
-port = fe.get_block_capability(dimension, position, "up", "fluid")
-```
-
-- `get_fluid()` 返回 `(fluid_id, amount)`，空罐或旧端口检测到储罐不可用时返回 `None`。`get_capacity()` 返回配置容量。
-- `fill(fluid_id, amount, simulate=False)` 和 `drain(fluid_id, amount, simulate=False)` 返回本次实际注入量或抽出量。使用 `simulate=True` 时返回预计量，库存保持原样。
-- 流体使用带命名空间的 ID，数量和容量使用非负整数 mB，约定 1000 mB 为一桶。一个存储键同时存放一种流体，抽空后可以换装。满罐、空罐、类型不符及面权限不符时操作返回 0。
-- 每轮重新查询端口。同一方块实体上，相同存储键的几个面应使用同样的容量和流体允许列表。流体的 ID 和数量随方块实体保存。
-
-[发电机和储罐演示及验收](examples/README.md#流体验收)
-
-本地验收命令（在本项目目录运行）：
-
-```text
-python -B -m unittest discover -s tests -v
-```
+手动一对多和多对一用于验证端口互通。正式管网、多对多、过滤和调度归末影接口的管道组件。[首版规格](docs/PROJECT_SPEC.md) · [代码结构](docs/DEVELOPMENT.md)
